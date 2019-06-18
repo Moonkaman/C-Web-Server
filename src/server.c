@@ -55,21 +55,24 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 
     // Build HTTP response and store it in response
 
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    int response_length = sprintf(response, "%s\n"
+                                            "Content-Type: %s\n"
+                                            "Content-Length: %d"
+                                            "Connection: close\n"
+                                            "\n",
+                                  header, content_type, content_length, body);
 
-    sprintf(response, "%s\n"
-                      "Content-Type: %s\n"
-                      "Content-Length: %d"
-                      "Connection: close\n"
-                      "\n"
-                      "%s",
-            header, content_type, content_length, body);
-    int response_length = strlen(response);
+    // int response_length = strlen(response); Here's how to get response length if sprintf didn't return the length
 
     // Send it all!
     int rv = send(fd, response, response_length, 0);
+
+    if (rv < 0)
+    {
+        perror("send");
+    }
+
+    rv = send(fd, body, content_length, 0);
 
     if (rv < 0)
     {
@@ -82,19 +85,19 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 /**
  * Send a /d20 endpoint response
  */
+
 void get_d20(int fd)
 {
     // Generate a random number between 1 and 20 inclusive
+    int r = (rand() % 20) + 1;
 
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    char rand_num[10];
+
+    // Turn Int into Char
+    sprintf(rand_num, "%d", r);
 
     // Use send_response() to send it back as text/plain data
-
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    send_response(fd, "HTTP/1.1 200 OK", "text/plain", rand_num, strlen(rand_num));
 }
 
 /**
@@ -139,30 +142,30 @@ void get_file(int fd, struct cache *cache, char *request_path)
     printf("filepath %s\n", filepath);
 
     file = file_load(filepath);
-    printf("got here 1\n");
-    printf("file data: %s\n", file->data);
+    // printf("got here 1\n");
+    // printf("file data: %s\n", file->data);
 
     if (file == NULL)
     {
-        printf("got here 2\n");
+        // printf("got here 2\n");
         resp_404(fd);
-        printf("got here 3\n");
+        // printf("got here 3\n");
         exit(0);
     }
     else
     {
-        printf("got here 4\n");
+        // printf("got here 4\n");
         mime_type = mime_type_get(request_path);
-        printf("got here 5\n");
+        // printf("got here 5\n");
         send_response(fd, "HTTP/1.1 200 OK", mime_type, file->data, file->size);
-        printf("got here 6\n");
+        // printf("got here 6\n");
     }
-    printf("got here 7\n");
+    // printf("got here 7\n");
     if (file != NULL)
     {
         file_free(file);
     }
-    printf("got here 8\n");
+    // printf("got here 8\n");
 }
 
 /**
@@ -209,7 +212,7 @@ void handle_http_request(int fd, struct cache *cache)
     // printf("Matches = %d\n", );
     if (strcmp(path, "/d20") == 0)
     {
-        printf('To come soon\n');
+        get_d20(fd);
     }
     else
     {
@@ -230,6 +233,8 @@ int main(void)
     int newfd;                          // listen on sock_fd, new connection on newfd
     struct sockaddr_storage their_addr; // connector's address information
     char s[INET6_ADDRSTRLEN];
+
+    srand(time(NULL));
 
     struct cache *cache = cache_create(10, 0);
 
