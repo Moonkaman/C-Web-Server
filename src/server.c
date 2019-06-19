@@ -137,35 +137,45 @@ void get_file(int fd, struct cache *cache, char *request_path)
     struct file_data *file;
     char *mime_type;
 
-    snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
+    struct cache_entry *e = cache_get(cache, request_path);
 
-    printf("filepath %s\n", filepath);
-
-    file = file_load(filepath);
-    // printf("got here 1\n");
-    // printf("file data: %s\n", file->data);
-
-    if (file == NULL)
+    if (e != NULL)
     {
-        // printf("got here 2\n");
-        resp_404(fd);
-        // printf("got here 3\n");
-        exit(0);
+        send_response(fd, "HTTP/1.1 200 OK", e->content_type, e->content, e->content_length);
     }
     else
     {
-        // printf("got here 4\n");
-        mime_type = mime_type_get(request_path);
-        // printf("got here 5\n");
-        send_response(fd, "HTTP/1.1 200 OK", mime_type, file->data, file->size);
-        // printf("got here 6\n");
+
+        snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
+
+        printf("filepath %s\n", filepath);
+
+        file = file_load(filepath);
+        // printf("got here 1\n");
+        // printf("file data: %s\n", file->data);
+
+        if (file == NULL)
+        {
+            // printf("got here 2\n");
+            resp_404(fd);
+            return;
+            // printf("got here 3\n");
+        }
+        else
+        {
+            // printf("got here 4\n");
+            mime_type = mime_type_get(request_path);
+            // printf("got here 5\n");
+            send_response(fd, "HTTP/1.1 200 OK", mime_type, file->data, file->size);
+            // printf("got here 6\n");
+        }
+        // printf("got here 7\n");
+        if (file != NULL)
+        {
+            file_free(file);
+        }
+        // printf("got here 8\n");
     }
-    // printf("got here 7\n");
-    if (file != NULL)
-    {
-        file_free(file);
-    }
-    // printf("got here 8\n");
 }
 
 /**
@@ -217,7 +227,7 @@ void handle_http_request(int fd, struct cache *cache)
     else
     {
         printf("Got to else in handle\n");
-        get_file(fd, NULL, path);
+        get_file(fd, cache, path);
     }
     //    Check if it's /d20 and handle that special case
     //    Otherwise serve the requested file by calling get_file()
